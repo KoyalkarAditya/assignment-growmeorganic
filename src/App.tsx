@@ -23,11 +23,15 @@ type Pagination = {
   limit: number;
 };
 type StateType = {
-  countSelected: number;
   allSelected: boolean;
   states: Record<string, CheckBoxType>;
 };
 type CheckBoxType = Record<string, boolean>;
+
+type SelectMultipleType = {
+  count: number;
+  pageNo: number;
+};
 
 function App() {
   const [pagination, setPagination] = useState<Pagination>({
@@ -35,14 +39,13 @@ function App() {
     total_pages: 0,
     limit: 12,
   });
-
   const [data, setData] = useState<Artwork[]>([]);
-  const [selectedCount, setSelectedCount] = useState(0);
-  const [selectMultiple, setSelectMultiple] = useState<number>(1);
+  const [selectMultiple, setSelectMultiple] = useState<SelectMultipleType>({
+    count: 0,
+    pageNo: 0,
+  });
   const overlayPanelRef = useRef<OverlayPanel>(null);
-
   const [boxStates, setBoxStates] = useState<StateType>({
-    countSelected: 0,
     allSelected: false,
     states: {},
   });
@@ -54,25 +57,55 @@ function App() {
       );
       const json = await response.json();
       setData(json.data);
-      setPagination({
-        ...pagination,
+      setPagination((prev) => ({
+        ...prev,
         limit: json.pagination.limit,
         total_pages: json.pagination.total_pages,
         current_page: json.pagination.current_page,
+      }));
+
+      setBoxStates((prev) => {
+        let updatedStates = { ...prev.states[pagination.current_page] };
+
+        if (selectMultiple.pageNo === pagination.current_page) {
+          let num = selectMultiple.count;
+          let i = 0;
+
+          while (num > 0 && i < json.data.length) {
+            const id = json.data[i].id;
+            updatedStates[id] = true;
+            num--;
+            i++;
+          }
+          setSelectMultiple((previous) => ({
+            ...previous,
+            count: previous.count - i,
+            pageNo: previous.pageNo + 1,
+          }));
+          return {
+            ...prev,
+            states: {
+              ...prev.states,
+              [pagination.current_page]: updatedStates,
+            },
+          };
+        }
+        return prev;
       });
     };
+
     fetchData();
   }, [pagination.current_page]);
 
   useEffect(() => {
     setIsAllSelected();
-  }, [data, boxStates]);
+  }, [boxStates.states, pagination.current_page]);
 
-  const setIsAllSelected = useCallback(() => {
+  const setIsAllSelected = () => {
     const currentPageState = boxStates.states[pagination.current_page] || {};
     const isAllSelected = data.every((item) => currentPageState[item.id]);
     setBoxStates((prev) => ({ ...prev, allSelected: isAllSelected }));
-  }, [data, pagination.current_page, boxStates.states]);
+  };
 
   const onPageChange = (event: PaginatorPageChangeEvent) => {
     setPagination({ ...pagination, current_page: event.page + 1 });
@@ -111,24 +144,47 @@ function App() {
   const onSvgClick = (event: any) => {
     overlayPanelRef.current?.toggle(event);
   };
-
   const applySelectMultiple = () => {
-    const allIds = data.slice(0, selectMultiple).map((item) => item.id);
-    const updatedState = allIds.reduce(
-      (acc, id) => ({ ...acc, [id]: true }),
-      {}
-    );
+    setSelectMultiple((prev) => {
+      let num = prev.count;
+      console.log(num + "is input");
+      let i = 0;
+      let updatedStates = { ...boxStates.states[pagination.current_page] };
 
-    setBoxStates((prev) => ({
-      ...prev,
-      states: {
-        ...prev.states,
-        [pagination.current_page]: {
-          ...(prev.states[pagination.current_page] || {}),
-          ...updatedState,
-        },
-      },
-    }));
+      while (num > 0 && i < data.length) {
+        const id = data[i].id;
+        updatedStates[id] = true;
+        i++;
+        num--;
+      }
+      setBoxStates((prev) => ({
+        ...prev,
+        states: { ...prev.states, [pagination.current_page]: updatedStates },
+      }));
+      if (prev.count <= 12) {
+        setBoxStates((prevBoxStates) => ({
+          ...prevBoxStates,
+          states: {
+            ...prevBoxStates.states,
+            [pagination.current_page]: updatedStates,
+          },
+        }));
+        return {
+          ...prev,
+          count: 0,
+          pageNo: prev.pageNo + 1,
+        };
+      } else {
+        const nextPage = pagination.current_page + 1;
+        console.log(nextPage + " is nextpage");
+        return {
+          ...prev,
+          count: prev.count - i,
+          pageNo: nextPage,
+        };
+      }
+    });
+
     overlayPanelRef.current?.hide();
   };
 
@@ -136,12 +192,15 @@ function App() {
     <div className="card">
       <OverlayPanel ref={overlayPanelRef}>
         <div className="p-3">
-          <h5>Select Multiple Artworks</h5>
+          <h5>Select Multiple</h5>
           <InputNumber
-            value={selectMultiple}
-            onValueChange={(e) => setSelectMultiple(e.value || 1)}
-            min={1}
-            max={data.length}
+            value={selectMultiple.count}
+            onValueChange={(e) =>
+              setSelectMultiple((prev) => ({
+                ...prev,
+                count: e.target.value || 0,
+              }))
+            }
           />
           <Button label="Apply" onClick={applySelectMultiple} />
         </div>
