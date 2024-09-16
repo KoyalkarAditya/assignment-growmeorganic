@@ -99,14 +99,17 @@ function App() {
 
   useEffect(() => {
     setIsAllSelected();
-  }, [boxStates.states, pagination.current_page, boxStates.allSelected]);
+  }, [boxStates.states, pagination.current_page]);
 
   const setIsAllSelected = () => {
     const currentPageState = boxStates.states[pagination.current_page];
     if (!(`${pagination.current_page}` in boxStates.states)) {
+      setBoxStates((prev) => ({ ...prev, allSelected: false }));
       return;
     }
-    const isAllSelected = data.every((item) => currentPageState[item.id]);
+    const isAllSelected = Object.values(currentPageState).every(
+      (value) => value === true
+    );
     setBoxStates((prev) => ({ ...prev, allSelected: isAllSelected }));
   };
 
