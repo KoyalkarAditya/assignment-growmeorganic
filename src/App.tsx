@@ -99,10 +99,13 @@ function App() {
 
   useEffect(() => {
     setIsAllSelected();
-  }, [boxStates.states, pagination.current_page]);
+  }, [boxStates.states, pagination.current_page, boxStates.allSelected]);
 
   const setIsAllSelected = () => {
-    const currentPageState = boxStates.states[pagination.current_page] || {};
+    const currentPageState = boxStates.states[pagination.current_page];
+    if (!(`${pagination.current_page}` in boxStates.states)) {
+      return;
+    }
     const isAllSelected = data.every((item) => currentPageState[item.id]);
     setBoxStates((prev) => ({ ...prev, allSelected: isAllSelected }));
   };
@@ -209,7 +212,7 @@ function App() {
       <DataTable value={data} tableStyle={{ minWidth: "50rem" }}>
         <Column
           header={
-            <>
+            <div style={{ display: "flex" }}>
               <Checkbox
                 onChange={onSelectAllChange}
                 checked={boxStates.allSelected}
@@ -224,7 +227,7 @@ function App() {
               >
                 <path d="M169.4 470.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 370.8 224 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 306.7L54.6 265.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z" />
               </svg>
-            </>
+            </div>
           }
           body={(rowData: Artwork) => (
             <Checkbox
