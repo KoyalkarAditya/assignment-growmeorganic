@@ -110,7 +110,9 @@ function App() {
     const isAllSelected = Object.values(currentPageState).every(
       (value) => value === true
     );
-    setBoxStates((prev) => ({ ...prev, allSelected: isAllSelected }));
+    if (isAllSelected && Object.values(currentPageState).length == 12)
+      setBoxStates((prev) => ({ ...prev, allSelected: isAllSelected }));
+    else setBoxStates((prev) => ({ ...prev, allSelected: false }));
   };
 
   const onPageChange = (event: PaginatorPageChangeEvent) => {
